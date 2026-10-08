@@ -1,0 +1,154 @@
+
+const PRODUCTS = [
+ {id:"pen",name:"Ball Pen",price:10,desc:"Smooth blue ball pen for office and daily use.",img:"images/pen.svg"},
+ {id:"notebook",name:"Premium Notebook",price:60,desc:"Quality notebook for office, college and meetings.",img:"images/notebook.svg"},
+ {id:"stapler",name:"Office Stapler",price:80,desc:"Strong and compact stapler for everyday office work.",img:"images/stapler.svg"},
+ {id:"file",name:"File Folder",price:35,desc:"Durable document file for organised office records.",img:"images/file.svg"},
+ {id:"paper",name:"A4 Paper",price:280,desc:"Premium A4 printing paper for office requirements.",img:"images/a4paper.svg"},
+ {id:"register",name:"Office Register",price:90,desc:"Long-size register for records and documentation.",img:"images/register.svg"},
+ {id:"marker",name:"Marker Set",price:75,desc:"Assorted office markers for writing and highlighting.",img:"images/marker.svg"},
+ {id:"calculator",name:"Office Calculator",price:220,desc:"Simple calculator for office and business use.",img:"images/calculator.svg"}
+];
+
+let cart = JSON.parse(localStorage.getItem("apparelCart") || "[]");
+
+function saveCart(){
+ localStorage.setItem("apparelCart",JSON.stringify(cart));
+ updateCartBadge();
+}
+
+function updateCartBadge(){
+ const count=cart.reduce((s,i)=>s+i.qty,0);
+ document.querySelectorAll("#cartCount").forEach(el=>el.textContent=count);
+}
+
+function addToCart(id){
+ const p=PRODUCTS.find(x=>x.id===id);
+ if(!p)return;
+ const item=cart.find(x=>x.id===id);
+ if(item)item.qty++;
+ else cart.push({id:p.id,qty:1});
+ saveCart();
+ showToast(p.name+" added to cart!");
+}
+
+function changeQty(id,delta){
+ const item=cart.find(x=>x.id===id);
+ if(!item)return;
+ item.qty+=delta;
+ if(item.qty<=0)cart=cart.filter(x=>x.id!==id);
+ saveCart();
+ renderCart();
+}
+
+function removeItem(id){
+ cart=cart.filter(x=>x.id!==id);
+ saveCart();
+ renderCart();
+}
+
+function clearCart(){
+ if(!cart.length)return;
+ if(confirm("Clear all products from your cart?")){
+  cart=[];
+  saveCart();
+  renderCart();
+ }
+}
+
+function getCartRows(){
+ return cart.map(i=>{
+  const p=PRODUCTS.find(x=>x.id===i.id);
+  return p?{...p,qty:i.qty,total:p.price*i.qty}:null;
+ }).filter(Boolean);
+}
+
+function renderProducts(){
+ const box=document.getElementById("productGrid");
+ if(!box)return;
+ box.innerHTML=PRODUCTS.map(p=>`
+  <article class="product-card">
+   <div class="product-img"><img src="${p.img}" alt="${p.name}"></div>
+   <div class="product-body">
+    <h3>${p.name}</h3>
+    <p>${p.desc}</p>
+    <div class="price">₹${p.price}</div>
+    <button class="add-btn" onclick="addToCart('${p.id}')">🛒 Add to Cart</button>
+   </div>
+  </article>`).join("");
+}
+
+function renderFeatured(){
+ const box=document.getElementById("featuredGrid");
+ if(!box)return;
+ box.innerHTML=PRODUCTS.slice(0,4).map(p=>`
+  <article class="product-card">
+   <div class="product-img"><img src="${p.img}" alt="${p.name}"></div>
+   <div class="product-body">
+    <h3>${p.name}</h3><p>${p.desc}</p>
+    <div class="price">₹${p.price}</div>
+    <button class="add-btn" onclick="addToCart('${p.id}')">Add to Cart</button>
+   </div>
+  </article>`).join("");
+}
+
+function renderCart(){
+ const box=document.getElementById("cartItems");
+ if(!box)return;
+ const rows=getCartRows();
+ const totalItems=rows.reduce((s,x)=>s+x.qty,0);
+ const total=rows.reduce((s,x)=>s+x.total,0);
+ document.getElementById("totalItems").textContent=totalItems;
+ document.getElementById("grandTotal").textContent="₹"+total;
+ if(!rows.length){
+  box.innerHTML=`<div class="empty"><div class="big">🛒</div><h3>Your cart is empty</h3><p>Add products from our Products page.</p><a class="btn btn-blue" href="products.html">View Products</a></div>`;
+  return;
+ }
+ box.innerHTML=rows.map(x=>`
+  <div class="cart-item">
+   <img src="${x.img}" alt="${x.name}">
+   <div>
+    <h3>${x.name}</h3><small>₹${x.price} per item</small>
+    <div class="qty">
+     <button onclick="changeQty('${x.id}',-1)">−</button>
+     <span>${x.qty}</span>
+     <button onclick="changeQty('${x.id}',1)">+</button>
+    </div>
+    <button class="remove" onclick="removeItem('${x.id}')">Remove</button>
+   </div>
+   <div class="item-total">₹${x.total}</div>
+  </div>`).join("");
+}
+
+function placeOrder(){
+ const rows=getCartRows();
+ if(!rows.length){alert("Your cart is empty.");return;}
+ const name=document.getElementById("customerName")?.value.trim()||"";
+ const phone=document.getElementById("customerPhone")?.value.trim()||"";
+ const address=document.getElementById("customerAddress")?.value.trim()||"";
+ if(!name||!phone||!address){alert("Please enter your name, phone number and address.");return;}
+ let total=rows.reduce((s,x)=>s+x.total,0);
+ let msg=`Hello Apparel Enterprises,%0A%0AI want to place an order.%0A%0ACustomer: ${encodeURIComponent(name)}%0APhone: ${encodeURIComponent(phone)}%0AAddress: ${encodeURIComponent(address)}%0A%0AOrder:%0A`;
+ rows.forEach(x=>msg+=`${encodeURIComponent(x.name)} x ${x.qty} = ₹${x.total}%0A`);
+ msg+=`%0AGrand Total: ₹${total}%0A%0APlease confirm availability and delivery details.`;
+ window.open("https://wa.me/919664830196?text="+msg,"_blank");
+}
+
+function showToast(text){
+ let t=document.getElementById("toast");
+ if(!t){
+  t=document.createElement("div");t.id="toast";
+  Object.assign(t.style,{position:"fixed",right:"20px",bottom:"20px",background:"#102a43",color:"#fff",padding:"13px 18px",borderRadius:"8px",zIndex:"9999",boxShadow:"0 5px 20px #0003"});
+  document.body.appendChild(t);
+ }
+ t.textContent="✓ "+text;t.style.display="block";
+ clearTimeout(window.toastTimer);
+ window.toastTimer=setTimeout(()=>t.style.display="none",1800);
+}
+
+document.addEventListener("DOMContentLoaded",()=>{
+ updateCartBadge();
+ renderProducts();
+ renderFeatured();
+ renderCart();
+});
